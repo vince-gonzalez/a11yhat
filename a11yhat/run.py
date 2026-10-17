@@ -1,11 +1,11 @@
 """
-hardHats WCAG machine - runner. Parses an HTML page, deploys the four crew leads
-(Perceivable, Operable, Understandable, Robust), and reports every applicable
-success criterion with its result and the measurement behind it.
+a11yhat - runner. Parses an HTML page, deploys the four crew leads (Perceivable,
+Operable, Understandable, Robust), and reports every applicable success criterion
+with its result and the measurement behind it. A crew in the hardHats family.
 
-  python hardhats/run.py page.html
-  python hardhats/run.py page.html --json
-  cat page.html | python hardhats/run.py -
+  python -m a11yhat page.html
+  python -m a11yhat page.html --json
+  cat page.html | python -m a11yhat -
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def audit(html: str):
 
 def text_report(findings) -> int:
     print("=" * 72)
-    print(" hardHats - WCAG 2.2 A/AA machine (POUR)")
+    print(" a11yhat - WCAG 2.2 A/AA machine (POUR)")
     print("=" * 72)
     fails = reviews = 0
     for crew in CREWS:

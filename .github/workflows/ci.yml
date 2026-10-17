@@ -15,4 +15,4 @@ jobs:
       - name: run the machine on a sample
         run: |
           printf '<!doctype html><html lang="en"><head><title>T</title></head><body><main><h1>Hi</h1><img src=a.jpg alt="a cat"></main></body></html>' > /tmp/ok.html
-          python -m hardhats /tmp/ok.html
+          python -m a11yhat /tmp/ok.html

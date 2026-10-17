@@ -7,7 +7,7 @@ cannot be shown to fail is not trustworthy.
 """
 import unittest
 
-from hardhats.run import audit
+from a11yhat.run import audit
 
 
 def status(html, sc):

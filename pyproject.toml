@@ -3,9 +3,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hardhats"
+name = "a11yhat"
 version = "0.1.0"
-description = "A WCAG 2.2 accessibility machine, structured by POUR: four crew leads, every success criterion a recorded check."
+description = "a11yhat: a WCAG 2.2 accessibility machine, structured by POUR — four crew leads, every success criterion a recorded check. A hardHats crew."
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [{ name = "Vincent Gonzalez" }]
@@ -20,7 +20,7 @@ classifiers = [
 dependencies = []
 
 [project.scripts]
-hardhats = "hardhats.run:main"
+a11yhat = "a11yhat.run:main"
 
 [tool.setuptools]
-packages = ["hardhats"]
+packages = ["a11yhat"]

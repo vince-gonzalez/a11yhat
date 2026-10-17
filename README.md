@@ -1,19 +1,19 @@
-# hardHats
+# a11yhat
 
-**coldHat is for play; hardHats are for work.** Where coldHat composes personas and
-rules, a hardHat is a crew that does a job — and the first one is a full **WCAG 2.2
-accessibility machine**, structured the way the work is actually organized: by the
-four principles, **Perceivable · Operable · Understandable · Robust (POUR)**.
+An open-source **WCAG 2.2 accessibility machine**, structured the way the work is
+organized — by the four principles, **Perceivable · Operable · Understandable ·
+Robust (POUR)**. One crew in the **hardHats** family (hardHats is the framework;
+a11yhat is a crew built with it).
 
-## The machine
+## How it works
 Each principle is a **crew lead** — a module that owns its success criteria. Every
 applicable criterion gets a recorded result; nothing is silently skipped:
 
 - **PASS** — checked and met.
 - **FAIL** — checked and failed, with the specific elements.
-- **CHECK** — a representative measurement ran, a human must confirm the rest (the
-  Trusted Tester stance: keyboard operation, caption quality, reading order, and
-  anything a parser cannot judge alone).
+- **CHECK** — a representative measurement ran; a human must confirm the rest
+  (keyboard operation, caption quality, reading order — anything a parser can't
+  judge alone). Each CHECK names the exact thing to look at.
 - **NA** — not present on this page.
 
 | Crew lead | Principle | Measured deterministically | Representative check + human confirm |
@@ -26,21 +26,26 @@ applicable criterion gets a recorded result; nothing is silently skipped:
 Shared foundation: `dom.py` (a dependency-free DOM), `color.py` (WCAG luminance),
 `base.py` (the uniform `Finding` record and the `Crew` base).
 
-## Run it
+## Install & run
 ```
-python hardhats/run.py page.html            # full POUR report, exit 1 on any FAIL
-python hardhats/run.py page.html --json      # machine-readable
-cat page.html | python hardhats/run.py -     # from stdin
+pip install a11yhat            # once on PyPI
+python -m a11yhat page.html    # full POUR report, exit 1 on any FAIL
+python -m a11yhat page.html --json
+cat page.html | python -m a11yhat -
 ```
 
 ## Grounding
-The criteria, topics, and pass/fail conditions follow the **DHS Trusted Tester for
-Web (5.1.3)** process and reuse the logic from the F-Keys house gates (`contrast.py`,
-`typefloor.py`, `a11y.py`). Standard library only — nothing is installed into the
-environment. Automated checks catch the machine-decidable failures; the CHECK items
-are the ones a tester must confirm, each with the exact thing to look at.
+Criteria, topics, and pass/fail conditions follow the **DHS Trusted Tester for Web
+(5.1.3)** process. Standard library only — nothing is installed into your
+environment. Automated checks catch the machine-decidable failures; the CHECK
+items are the ones a tester must confirm, each with the exact thing to review. It
+is an honest tool: it does the fast 80% and tells you precisely what the human 20%
+is — it does not pretend a scanner can certify a page.
 
-## Status
-First hardHat. The WCAG machine runs clean across POUR on a 33-criterion page. Next:
-more success criteria per facet, a self-test suite, and the crew framework
-generalized so other hardHats (a grant crew, a compliance crew) are config, not code.
+## License
+MIT. Copyright Vincent Gonzalez / F-Keys Creative LLC.
+
+## Tests
+`python -m unittest discover -s tests` — every deterministic check is proven to
+catch its defect and to clear on good input, and a clean page produces zero
+failures.

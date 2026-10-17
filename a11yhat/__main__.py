@@ -1,4 +1,4 @@
-"""Enable `python -m hardhats page.html`."""
+"""Enable `python -m a11yhat page.html`."""
 import sys
 
 from .run import main
