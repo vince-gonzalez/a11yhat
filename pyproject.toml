@@ -10,7 +10,8 @@ readme = "README.md"
 requires-python = ">=3.9"
 authors = [{ name = "Vincent Gonzalez" }]
 keywords = ["accessibility", "wcag", "a11y", "section508", "audit", "pour"]
-# license: left unset on purpose — the owner chooses it before publishing.
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Topic :: Software Development :: Quality Assurance",
