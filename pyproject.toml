@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hardhats"
+version = "0.1.0"
+description = "A WCAG 2.2 accessibility machine, structured by POUR: four crew leads, every success criterion a recorded check."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Vincent Gonzalez" }]
+keywords = ["accessibility", "wcag", "a11y", "section508", "audit", "pour"]
+# license: left unset on purpose — the owner chooses it before publishing.
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Quality Assurance",
+  "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.scripts]
+hardhats = "hardhats.run:main"
+
+[tool.setuptools]
+packages = ["hardhats"]

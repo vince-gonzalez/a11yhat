@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from base import FAIL, NA, PASS, REVIEW, Crew
+from .base import FAIL, NA, PASS, REVIEW, Crew
 
 NAMED_ROLE_NEEDS = {
     "checkbox": "aria-checked", "switch": "aria-checked", "radio": "aria-checked",
@@ -30,6 +30,7 @@ class Robust(Crew):
 
     # ---- 4.1.2 Name, role, value (Topics 4/5/6) ----
     def sc_412_namerolevalue(self):
+        labels_for = {l.get("for") for l in self.doc.find("label") if l.has("for")}
         nameless, roleless_widget = [], []
         for el in self.doc.walk():
             if not el.is_interactive():
@@ -37,7 +38,8 @@ class Robust(Crew):
             name = (el.inner_text() or el.get("aria-label") or el.get("aria-labelledby")
                     or el.get("title") or el.get("alt") or el.get("value")
                     or el.get("placeholder") or "").strip()
-            if not name:
+            associated = el.get("id") in labels_for or (el.parent and el.parent.tag == "label")
+            if not name and not associated:
                 nameless.append(el.tag + (f"[{el.role()}]" if el.role() else ""))
             role = el.role()
             if role in NAMED_ROLE_NEEDS and not el.has(NAMED_ROLE_NEEDS[role]):

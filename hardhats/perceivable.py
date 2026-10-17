@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import re
 
-from base import FAIL, NA, PASS, REVIEW, Crew
-from color import parse_color, ratio
+from .base import FAIL, NA, PASS, REVIEW, Crew
+from .color import parse_color, ratio
 
 SENSORY = re.compile(r"\b(round|square|circular|the (left|right|top|bottom)|"
                      r"on the (left|right)|above|below|the (green|red|blue) (button|box|link))\b", re.I)

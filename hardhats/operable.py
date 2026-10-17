@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from base import FAIL, NA, PASS, REVIEW, Crew
+from .base import FAIL, NA, PASS, REVIEW, Crew
 
 VAGUE_LINK = {"click here", "here", "read more", "more", "link", "this", "learn more",
               "details", "continue", "go", "click", "download"}

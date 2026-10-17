@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from base import FAIL, NA, PASS, REVIEW, Crew
+from .base import FAIL, NA, PASS, REVIEW, Crew
 
 
 class Understandable(Crew):
@@ -16,7 +16,7 @@ class Understandable(Crew):
 
     # ---- 3.1.1 Language of page (Topic 11) ----
     def sc_311_lang(self):
-        m = re.search(r'<html\b[^>]*\blang\s*=\s*["\']([a-zA-Z-]+)', self.html, re.I)
+        m = re.search(r'<html\b[^>]*\blang\s*=\s*["\']?([a-zA-Z][a-zA-Z-]*)', self.html, re.I)
         self.record("3.1.1", "A", "Language of page", "Topic 11 Language",
                     PASS if m else FAIL,
                     ([] if m else ["<html> has no lang attribute; set e.g. lang=\"en\""]),

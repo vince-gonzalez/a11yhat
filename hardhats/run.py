@@ -10,22 +10,20 @@ success criterion with its result and the measurement behind it.
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except (AttributeError, ValueError):
     pass
 
-from base import FAIL, NA, PASS, REVIEW  # noqa: E402
-from dom import parse  # noqa: E402
-from operable import Operable  # noqa: E402
-from perceivable import Perceivable  # noqa: E402
-from robust import Robust  # noqa: E402
-from understandable import Understandable  # noqa: E402
+from .base import FAIL, NA, PASS, REVIEW
+from .dom import parse
+from .operable import Operable
+from .perceivable import Perceivable
+from .robust import Robust
+from .understandable import Understandable
 
 CREWS = [Perceivable, Operable, Understandable, Robust]
 MARK = {PASS: "PASS", FAIL: "FAIL", REVIEW: "CHECK", NA: " -- "}
