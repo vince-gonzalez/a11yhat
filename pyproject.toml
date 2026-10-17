@@ -19,6 +19,10 @@ classifiers = [
 ]
 dependencies = []
 
+[project.urls]
+Homepage = "https://github.com/vince-gonzalez/a11yhat"
+Repository = "https://github.com/vince-gonzalez/a11yhat"
+
 [project.scripts]
 a11yhat = "a11yhat.run:main"
 
