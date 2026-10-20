@@ -51,6 +51,9 @@ class Node:
         return (self.get("role") or "").strip().lower()
 
     def is_interactive(self):
+        # a hidden input is never rendered and never takes focus, so it is not a control a person operates
+        if self.tag == "input" and self.get("type", "").strip().lower() == "hidden":
+            return False
         if self.tag in INTERACTIVE and not (self.tag == "a" and not self.has("href")):
             return True
         if self.role() in {"button", "link", "checkbox", "menuitem", "tab", "switch"}:

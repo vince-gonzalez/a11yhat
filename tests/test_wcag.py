@@ -74,6 +74,11 @@ class DeterministicChecks(unittest.TestCase):
     def test_412_name_role_value(self):
         self.one("4.1.2", "<button></button>", "<button>Save</button>")
 
+    def test_412_hidden_input_is_not_a_control(self):
+        # a value holder must not fail 4.1.2, and it must not hide a real unnamed button beside it
+        self.one("4.1.2", "<input type=hidden id=f><button></button>",
+                 "<input type=hidden id=f><button>Save</button>")
+
 
 class CleanPagePasses(unittest.TestCase):
     """A well-built page must produce zero FAIL findings."""
