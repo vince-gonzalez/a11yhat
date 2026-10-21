@@ -176,9 +176,19 @@ class Perceivable(Crew):
         worst = min(pairs, key=lambda p: p[0])
         detail = [f"{w}: {r:.2f}:1 ({fg} on {bg}) - below 4.5:1"
                   for r, w, fg, bg in sorted(fails)[:5]]
+        # text painted over an IMAGE cannot be measured from stylesheet colors: never call that a pass
+        images = [sel.strip()[:40] for sel, decls in css_rules(self.css)
+                  if re.search(r"url\(", (decls.get("background", "") + " " + decls.get("background-image", "")), re.I)]
+        images += [f"<{el.tag} style>" for el in self.doc.walk()
+                   if re.search(r"background(?:-image)?\s*:[^;]*url\(", el.get("style", ""), re.I)]
+        status = FAIL if fails else (REVIEW if images else PASS)
+        if images and not fails:
+            detail.append(f"{len(images)} rule(s) paint a background image ({', '.join(images[:4])}): text over an image "
+                          "cannot be measured from stylesheet colors; measure the rendered pixels")
         self.record("1.4.3", "AA", "Contrast (minimum)", "Topic 13 Sensory & contrast",
-                    FAIL if fails else PASS, detail,
-                    f"{len(pairs)} pairs measured, lowest {worst[0]:.2f}:1, {len(fails)} below 4.5:1")
+                    status, detail,
+                    f"{len(pairs)} pairs measured, lowest {worst[0]:.2f}:1, {len(fails)} below 4.5:1, "
+                    f"{len(images)} image background(s)")
 
     # ---- 1.4.4 Resize text (Topic 18) ----
     def sc_144_resize(self):

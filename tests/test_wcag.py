@@ -37,6 +37,13 @@ class DeterministicChecks(unittest.TestCase):
                  "<p style='color:#777;background:#fff'>x</p>",
                  "<p style='color:#000;background:#fff'>x</p>")
 
+    def test_143_text_over_an_image_is_never_a_pass(self):
+        # passing colors elsewhere, but a container painted with an image: a person must measure the pixels
+        self.one("1.4.3",
+                 "<style>p{color:#000;background:#fff}.card{background:url(board.png) center/contain}</style><div class=card><p>x</p></div>",
+                 "<style>p{color:#000;background:#fff}</style><div class=card><p>x</p></div>",
+                 bad="REVIEW", good="PASS")
+
     def test_142_autoplay(self):
         self.one("1.4.2", "<video autoplay src=v.mp4></video>", "<video src=v.mp4></video>")
 
