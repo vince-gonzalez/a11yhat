@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from .base import FAIL, NA, PASS, REVIEW, Crew
-from .color import parse_color, ratio
+from .color import composite, parse_rgba, ratio
 
 SENSORY = re.compile(r"\b(round|square|circular|the (left|right|top|bottom)|"
                      r"on the (left|right)|above|below|the (green|red|blue) (button|box|link))\b", re.I)
@@ -43,7 +43,20 @@ class Perceivable(Crew):
                 bad_alt.append(alt[:40])
         svg_unnamed = [s for s in self.doc.find("svg")
                        if s.role() == "img" and not (s.has("aria-label") or s.find("title"))]
-        canvas_bare = [c for c in self.doc.find("canvas") if not c.inner_text()]
+        # A canvas is named by aria-label or aria-labelledby just as well
+        # as by fallback content, and one marked decorative needs no name
+        # at all. Reading inner text alone reported a canvas carrying a
+        # correct role="img" and aria-label as having no text
+        # alternative - a false FAIL on markup that is right. The svg
+        # check two lines up and the control check below already accept
+        # aria-label; this one simply did not.
+        canvas_bare = [c for c in self.doc.find("canvas")
+                       if not (c.inner_text().strip()
+                               or c.has("aria-label")
+                               or c.has("aria-labelledby")
+                               or c.has("aria-hidden")
+                               or c.role() == "presentation"
+                               or c.role() == "none")]
         detail = []
         if no_alt:
             detail.append(f"{len(no_alt)} <img> without an alt attribute")
@@ -149,24 +162,41 @@ class Perceivable(Crew):
 
     # ---- 1.4.3 Contrast (minimum) - MEASURED (Topic 13) ----
     def sc_143_contrast(self):
-        pairs = []  # (ratio, where, fg, bg)
+        pairs = []        # (ratio, where, fg, bg)
+        translucent = []  # where a colour was not opaque
+
+        def measure(fg_raw, bg_raw, where):
+            """Composite before measuring. A translucent colour is not the
+            colour a person sees, and reading rgba() as if the alpha were
+            1.0 scored rgba(0,0,0,0.04) on white at 21:1 when what is on
+            the screen is about 1.09:1. The backdrop behind the declared
+            background is not knowable from a stylesheet, so white is
+            assumed, and the pair is recorded as translucent so the
+            verdict can say so instead of claiming a pass it cannot
+            support."""
+            cf, cb = parse_rgba(fg_raw), parse_rgba(bg_raw)
+            if not cf or not cb:
+                return
+            flat_bg = composite(cb)              # over the page's white
+            flat_fg = composite(cf, flat_bg)     # over whatever it sits on
+            if cf[3] < 1.0 or cb[3] < 1.0:
+                translucent.append(where)
+            pairs.append((ratio(flat_fg, flat_bg), where,
+                          fg_raw.strip(), bg_raw.strip()))
+
         # inline styles that set both color and a background
         for el in self.doc.walk():
             st = el.get("style", "").lower()
             fg = re.search(r"(?<!-)color\s*:\s*([^;]+)", st)
             bg = re.search(r"background(?:-color)?\s*:\s*([^;]+)", st)
             if fg and bg:
-                c, b = parse_color(fg.group(1)), parse_color(bg.group(1))
-                if c and b:
-                    pairs.append((ratio(c, b), f"<{el.tag} style>", fg.group(1).strip(), bg.group(1).strip()))
+                measure(fg.group(1), bg.group(1), f"<{el.tag} style>")
         # stylesheet rules that set both
         for sel, decls in css_rules(self.css):
             if "color" in decls and ("background" in decls or "background-color" in decls):
-                c = parse_color(decls["color"])
-                b = parse_color(decls.get("background-color") or decls.get("background", ""))
-                if c and b:
-                    pairs.append((ratio(c, b), sel.strip()[:40], decls["color"],
-                                  decls.get("background-color") or decls["background"]))
+                measure(decls["color"],
+                        decls.get("background-color") or decls.get("background", ""),
+                        sel.strip()[:40])
         if not pairs:
             self.record("1.4.3", "AA", "Contrast (minimum)", "Topic 13 Sensory & contrast", REVIEW,
                         ["no element declares both text and background color; measure rendered "
@@ -181,14 +211,22 @@ class Perceivable(Crew):
                   if re.search(r"url\(", (decls.get("background", "") + " " + decls.get("background-image", "")), re.I)]
         images += [f"<{el.tag} style>" for el in self.doc.walk()
                    if re.search(r"background(?:-image)?\s*:[^;]*url\(", el.get("style", ""), re.I)]
-        status = FAIL if fails else (REVIEW if images else PASS)
+        status = FAIL if fails else (REVIEW if (images or translucent) else PASS)
         if images and not fails:
             detail.append(f"{len(images)} rule(s) paint a background image ({', '.join(images[:4])}): text over an image "
                           "cannot be measured from stylesheet colors; measure the rendered pixels")
+        if translucent and not fails:
+            # A composite over an ASSUMED white backdrop is a measurement
+            # with an assumption in it. If the real backdrop is darker the
+            # number moves, so this cannot be reported as a clean pass.
+            detail.append(f"{len(translucent)} pair(s) use a translucent colour "
+                          f"({', '.join(translucent[:4])}): measured by compositing over "
+                          "white, which is what an unstyled page is. If anything darker sits "
+                          "behind them the real ratio is lower - check the rendered pixels")
         self.record("1.4.3", "AA", "Contrast (minimum)", "Topic 13 Sensory & contrast",
                     status, detail,
                     f"{len(pairs)} pairs measured, lowest {worst[0]:.2f}:1, {len(fails)} below 4.5:1, "
-                    f"{len(images)} image background(s)")
+                    f"{len(images)} image background(s), {len(translucent)} translucent")
 
     # ---- 1.4.4 Resize text (Topic 18) ----
     def sc_144_resize(self):
