@@ -1,0 +1,6 @@
+# Build output. I add these by accident with "git add -A"; dist/ is
+# tracked on purpose because I ship the wheel from this repo.
+a11yhat.egg-info/
+__pycache__/
+*.pyc
+.pytest_cache/
