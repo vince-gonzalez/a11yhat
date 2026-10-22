@@ -36,10 +36,19 @@ class Crew:
 
     principle_num = ""
 
-    def __init__(self, doc, css: str = "", html: str = ""):
+    def __init__(self, doc, css: str = "", html: str = "",
+                 css_missed=None, css_redefined=None):
         self.doc = doc
         self.css = css or ""
         self.html = html or ""
+        # Stylesheets I could not read. If this is non-empty then any
+        # colour I measured is a subset of the colours on the page, and
+        # a clean result over a subset is not a clean result.
+        self.css_missed = list(css_missed or [])
+        # Tokens that carry more than one value - my dark mode. If this
+        # is non-empty I measured the default theme and not the other
+        # one, and I say so rather than implying I checked both.
+        self.css_redefined = list(css_redefined or [])
         self.findings: list[Finding] = []
 
     def record(self, sc, level, name, topic, status, detail=None, measurement=""):

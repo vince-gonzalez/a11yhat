@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import urllib.request
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -19,6 +20,7 @@ except (AttributeError, ValueError):
     pass
 
 from .base import FAIL, NA, PASS, REVIEW
+from . import sheets
 from .dom import parse
 from .operable import Operable
 from .perceivable import Perceivable
@@ -30,12 +32,20 @@ MARK = {PASS: "PASS", FAIL: "FAIL", REVIEW: "CHECK", NA: " -- "}
 ORDER = {PASS: 1, FAIL: 0, REVIEW: 2, NA: 3}
 
 
-def audit(html: str):
-    css = "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", html, re.I | re.S))
+def audit(html: str, base: str | None = None):
+    """Audit one document.
+
+    `base` is the path or URL the html came from, and it is what lets me
+    resolve the stylesheets the page links. Without it I see only inline
+    <style>, which is how the contrast check came to measure 0 pairs on
+    f-keys.com, 0 on poticas.com and 1 on opticquiz.com.
+    """
+    css, _loaded, missed, redefined = sheets.collect_resolved(html, base)
     doc = parse(html)
     findings = []
     for crew in CREWS:
-        findings += crew(doc, css, html).run()
+        findings += crew(doc, css, html, css_missed=missed,
+                         css_redefined=redefined).run()
     return findings
 
 
@@ -76,8 +86,18 @@ def main():
     as_json = "--json" in args
     args = [a for a in args if a != "--json"]
     src = args[0] if args else "-"
-    html = sys.stdin.read() if src == "-" else open(src, encoding="utf-8", errors="replace").read()
-    findings = audit(html)
+    if src.startswith(("http://", "https://")):
+        # I audit live addresses now. Reading a file off disk never saw
+        # the stylesheet a CDN serves, and a page is not its source.
+        req = urllib.request.Request(
+            src, headers={"user-agent": "Mozilla/5.0 (compatible; a11yhat/0.1)"})
+        with urllib.request.urlopen(req, timeout=40) as r:
+            html = r.read().decode("utf-8", "replace")
+    elif src == "-":
+        html = sys.stdin.read()
+    else:
+        html = open(src, encoding="utf-8", errors="replace").read()
+    findings = audit(html, None if src == "-" else src)
     if as_json:
         print(json.dumps([{"sc": f.sc, "level": f.level, "principle": f.principle,
                            "name": f.name, "topic": f.topic, "status": f.status,

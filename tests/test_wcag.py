@@ -38,11 +38,34 @@ class DeterministicChecks(unittest.TestCase):
                  "<p style='color:#000;background:#fff'>x</p>")
 
     def test_143_text_over_an_image_is_never_a_pass(self):
-        # passing colors elsewhere, but a container painted with an image: a person must measure the pixels
+        # Text whose BACKDROP is a picture: nothing in the stylesheet says
+        # what colour is behind it, so a person has to measure the pixels.
+        #
+        # I rewrote this fixture on 2026-10-22. It used to put
+        # background:#fff on the <p> itself and still expect REVIEW,
+        # which only passed because the old check scanned the whole
+        # stylesheet for a url() and had no idea what was behind what.
+        # An opaque white on the paragraph hides the card's image
+        # completely, so that markup is genuinely 21:1 and the old
+        # verdict was a false positive. The case below is the one the
+        # test was always named for.
         self.one("1.4.3",
-                 "<style>p{color:#000;background:#fff}.card{background:url(board.png) center/contain}</style><div class=card><p>x</p></div>",
-                 "<style>p{color:#000;background:#fff}</style><div class=card><p>x</p></div>",
+                 "<style>.card{background:url(board.png) center/contain}"
+                 ".card p{color:#000}</style><div class=card><p>x</p></div>",
+                 "<style>p{color:#000;background:#fff}</style>"
+                 "<div class=card><p>x</p></div>",
                  bad="REVIEW", good="PASS")
+
+    def test_143_an_opaque_background_hides_the_image_behind_it(self):
+        # The counterpart, stated on purpose: if the text's own box is
+        # opaque, what the container paints underneath cannot be seen and
+        # must not drag the verdict down.
+        self.one("1.4.3",
+                 "<style>.card{background:url(b.png)}.card p{color:#777;"
+                 "background:#fff}</style><div class=card><p>x</p></div>",
+                 "<style>.card{background:url(b.png)}.card p{color:#000;"
+                 "background:#fff}</style><div class=card><p>x</p></div>",
+                 bad="FAIL", good="PASS")
 
     def test_142_autoplay(self):
         self.one("1.4.2", "<video autoplay src=v.mp4></video>", "<video src=v.mp4></video>")

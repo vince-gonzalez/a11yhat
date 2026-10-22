@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 from .base import FAIL, NA, PASS, REVIEW, Crew
+from . import cascade
 from .color import composite, parse_rgba, ratio
 
 SENSORY = re.compile(r"\b(round|square|circular|the (left|right|top|bottom)|"
@@ -162,6 +163,72 @@ class Perceivable(Crew):
 
     # ---- 1.4.3 Contrast (minimum) - MEASURED (Topic 13) ----
     def sc_143_contrast(self):
+        """What each piece of text actually sits on.
+
+        I used to measure only rules that set a colour AND a background
+        in the same block, which real stylesheets never do, so on three
+        of my own sites this measured 0, 0 and 1 pairs. It now resolves
+        the cascade: colour inherits, background does not but the
+        backdrop a person sees is the nearest ancestor that paints one,
+        and translucent layers are flattened bottom-up the way a browser
+        paints them.
+        """
+        rows = cascade.text_pairs(self.doc, self.css)
+        if rows:
+            return self._contrast_from_cascade(rows)
+        return self._contrast_from_declared_pairs()
+
+    def _contrast_from_cascade(self, rows):
+        measured = [r for r in rows if r["verdict"] == "measured"]
+        unmeasurable = [r for r in rows if r["verdict"] == "unmeasurable"]
+        exempt = [r for r in rows if r["verdict"] == "exempt"]
+        fails = [r for r in measured if r["ratio"] < 4.5]
+        translucent = [r for r in measured if r["translucent"]]
+
+        detail, seen = [], set()
+        for r in sorted(fails, key=lambda x: x["ratio"]):
+            key = (r["where"], r["fg"], r["bg"])
+            if key in seen:
+                continue
+            seen.add(key)
+            if len(seen) > 6:
+                break
+            detail.append("%s: %.2f:1 (%s on %s) - below 4.5:1"
+                          % (r["where"], r["ratio"], r["fg"], r["bg"]))
+        if len(fails) > len(seen):
+            detail.append("%d more text run(s) fail the same way"
+                          % (len(fails) - len(seen)))
+        for r in unmeasurable[:3]:
+            detail.append("%s: not measurable - %s" % (r["where"], r["why"]))
+        if translucent and not fails:
+            detail.append("%d run(s) use a translucent colour, flattened onto "
+                          "the layers behind them; if anything paints between "
+                          "them the real ratio differs"
+                          % len(translucent))
+        if self.css_missed:
+            detail.append("could not read %d stylesheet(s) (%s), so these "
+                          "colours are a subset of the page's"
+                          % (len(self.css_missed),
+                             ", ".join(self.css_missed[:3])))
+        if self.css_redefined:
+            detail.append("%d colour token(s) are redefined elsewhere (%s): "
+                          "this is the default theme, and dark mode was not "
+                          "measured"
+                          % (len(self.css_redefined),
+                             ", ".join(self.css_redefined[:4])))
+        # A pass is only a pass when nothing was left unresolved.
+        unresolved = bool(unmeasurable or translucent or self.css_missed
+                          or self.css_redefined)
+        status = FAIL if fails else (REVIEW if unresolved else PASS)
+        worst = min((r["ratio"] for r in measured), default=0)
+        self.record("1.4.3", "AA", "Contrast (minimum)",
+                    "Topic 13 Sensory & contrast", status, detail,
+                    "%d text run(s) measured, lowest %.2f:1, %d below 4.5:1, "
+                    "%d not measurable, %d exempt"
+                    % (len(measured), worst, len(fails), len(unmeasurable),
+                       len(exempt)))
+
+    def _contrast_from_declared_pairs(self):
         pairs = []        # (ratio, where, fg, bg)
         translucent = []  # where a colour was not opaque
 
