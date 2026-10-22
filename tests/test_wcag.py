@@ -98,8 +98,28 @@ class DeterministicChecks(unittest.TestCase):
                  "<form><input type=text name=q></form>",
                  "<form><label for=q>Search</label><input type=text id=q name=q></form>")
 
-    def test_411_dup_id(self):
-        self.one("4.1.1", "<span id=x></span><span id=x></span>", "<span id=x></span><span id=y></span>")
+    def test_411_is_obsolete_in_22_and_no_longer_fails(self):
+        # Rewritten 2026-10-22. 4.1.1 Parsing was removed from WCAG 2.2
+        # and this tool says 2.2 on the tin, so reporting it as a live
+        # criterion was wrong in a way a reviewer would catch. The
+        # measurement is kept and recorded as NA, and the harm a
+        # duplicated id actually does moved to 4.1.2 below.
+        self.assertEqual(status(WRAP.format("<span id=x></span>"
+                                            "<span id=x></span>"), "4.1.1"),
+                         "NA")
+
+    def test_a_duplicated_id_that_something_points_at_fails_412(self):
+        # This is the damage that is real: the label's for= resolves to
+        # whichever element the browser indexed first.
+        self.assertEqual(status(WRAP.format(
+            "<label for=x>Email</label><input id=x><input id=x>"), "4.1.2"),
+            "FAIL")
+
+    def test_a_duplicated_id_nobody_references_is_not_a_failure(self):
+        # Untidy, and not an accessibility barrier. Reporting it as one
+        # is how a report earns a reputation for crying wolf.
+        self.assertNotEqual(status(WRAP.format(
+            "<span id=x>a</span><span id=x>b</span>"), "4.1.2"), "FAIL")
 
     def test_412_name_role_value(self):
         self.one("4.1.2", "<button></button>", "<button>Save</button>")
@@ -124,7 +144,14 @@ class CleanPagePasses(unittest.TestCase):
         <img src="barn.jpg" alt="A red barn at dusk">
         <form>
           <label for="email">Email address</label>
-          <input type="text" id="email" name="email" required>
+          <!-- autocomplete added 2026-10-22. This fixture claims to be
+               AA clean and was only ever clean against the criteria I
+               had written. 1.3.5 asks that a field collecting the
+               user's own data says which data it is, so an email input
+               without autocomplete really does fail, and the page was
+               not clean before. -->
+          <input type="text" id="email" name="email" autocomplete="email"
+                 required>
           <button type="submit">Subscribe</button>
         </form>
         <a href="/report">Read the annual accessibility report</a>

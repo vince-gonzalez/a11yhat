@@ -195,3 +195,68 @@ class Stylesheets(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class LargeTextNeedsOnly3To1(unittest.TestCase):
+    """1.4.3 asks 4.5:1, and 3:1 once the text is large: 18pt, or 14pt
+    bold, which is 24px and 18.66px. Holding a heading to the small-text
+    bar over-reports, and letting small text through at 3:1 under-reports.
+    Both directions are pinned here."""
+
+    def test_units_resolve(self):
+        from a11yhat.cascade import _resolve_size
+        self.assertAlmostEqual(_resolve_size("24px", 16, 16), 24.0)
+        self.assertAlmostEqual(_resolve_size("18pt", 16, 16), 24.0)
+        self.assertAlmostEqual(_resolve_size("1.5rem", 99, 16), 24.0)
+        self.assertAlmostEqual(_resolve_size("2em", 12, 16), 24.0)
+        self.assertAlmostEqual(_resolve_size("150%", 16, 16), 24.0)
+        self.assertAlmostEqual(_resolve_size("x-large", 16, 16), 24.0)
+        self.assertIsNone(_resolve_size("calc(1rem + 2px)", 16, 16))
+
+    def test_em_chains_compound_from_the_root_down(self):
+        # 16 -> 2em = 32 -> 0.5em = 16. Resolving from the node up gets
+        # this wrong, which is why it is done root-first.
+        r = one("body{background:#fff;color:#777}.a{font-size:2em}"
+                ".b{font-size:0.5em}",
+                "<div class=a><span class=b>x</span></div>", "span")
+        self.assertAlmostEqual(r["px"], 16.0, places=1)
+
+    def test_rem_ignores_the_parent(self):
+        r = one("html{font-size:10px}body{background:#fff;color:#777}"
+                ".a{font-size:4em}.b{font-size:2rem}",
+                "<div class=a><span class=b>x</span></div>", "span")
+        self.assertAlmostEqual(r["px"], 20.0, places=1)
+
+    def test_a_heading_is_large_and_bold_by_default(self):
+        r = one("body{background:#fff;color:#777}", "<h1>Title</h1>", "h1")
+        self.assertTrue(r["bold"])
+        self.assertEqual(r["needs"], 3.0)
+
+    def test_small_text_still_needs_4_5(self):
+        r = one("body{background:#fff;color:#777}", "<p>x</p>", "p")
+        self.assertEqual(r["needs"], 4.5)
+
+    def test_the_boundary_is_not_off_by_one(self):
+        from a11yhat.cascade import required_ratio
+        self.assertEqual(required_ratio(23.9, False), 4.5)
+        self.assertEqual(required_ratio(24.0, False), 3.0)
+        self.assertEqual(required_ratio(18.66, True), 3.0)
+        self.assertEqual(required_ratio(18.65, True), 4.5)
+        self.assertEqual(required_ratio(18.66, False), 4.5)
+
+    def test_font_weight_number_decides_bold(self):
+        r = one("body{background:#fff;color:#777}.a{font-weight:700;"
+                "font-size:19px}", "<p class=a>x</p>", "p")
+        self.assertTrue(r["bold"])
+        self.assertEqual(r["needs"], 3.0)
+        r2 = one("body{background:#fff;color:#777}.a{font-weight:400;"
+                 "font-size:19px}", "<p class=a>x</p>", "p")
+        self.assertFalse(r2["bold"])
+        self.assertEqual(r2["needs"], 4.5)
+
+    def test_a_large_heading_at_3_1_passes_and_small_text_does_not(self):
+        # #767676 on white is 4.54:1; #949494 is about 3.03:1
+        big = one("body{background:#fff}h1{color:#949494}", "<h1>T</h1>", "h1")
+        self.assertGreaterEqual(big["ratio"], big["needs"])
+        small = one("body{background:#fff}p{color:#949494}", "<p>T</p>", "p")
+        self.assertLess(small["ratio"], small["needs"])

@@ -14,7 +14,10 @@ VAGUE_LINK = {"click here", "here", "read more", "more", "link", "this", "learn 
               "details", "continue", "go", "click", "download"}
 
 
-class Operable(Crew):
+from .extra import MoreOperable
+
+
+class Operable(MoreOperable, Crew):
     principle_num = "2"
 
     # ---- 2.1.1 Keyboard (Topic 4) ----

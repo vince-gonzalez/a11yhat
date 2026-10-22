@@ -29,7 +29,10 @@ def css_rules(css: str):
             yield sel, decls
 
 
-class Perceivable(Crew):
+from .extra import MorePerceivable
+
+
+class Perceivable(MorePerceivable, Crew):
     principle_num = "1"
 
     # ---- 1.1.1 Non-text content (Topic 7) ----
@@ -182,7 +185,7 @@ class Perceivable(Crew):
         measured = [r for r in rows if r["verdict"] == "measured"]
         unmeasurable = [r for r in rows if r["verdict"] == "unmeasurable"]
         exempt = [r for r in rows if r["verdict"] == "exempt"]
-        fails = [r for r in measured if r["ratio"] < 4.5]
+        fails = [r for r in measured if r["ratio"] < r["needs"]]
         translucent = [r for r in measured if r["translucent"]]
 
         detail, seen = [], set()
@@ -193,8 +196,10 @@ class Perceivable(Crew):
             seen.add(key)
             if len(seen) > 6:
                 break
-            detail.append("%s: %.2f:1 (%s on %s) - below 4.5:1"
-                          % (r["where"], r["ratio"], r["fg"], r["bg"]))
+            detail.append("%s: %.2f:1 (%s on %s) at %gpx%s - needs %.1f:1"
+                          % (r["where"], r["ratio"], r["fg"], r["bg"],
+                             r["px"], " bold" if r["bold"] else "",
+                             r["needs"]))
         if len(fails) > len(seen):
             detail.append("%d more text run(s) fail the same way"
                           % (len(fails) - len(seen)))
@@ -223,7 +228,7 @@ class Perceivable(Crew):
         worst = min((r["ratio"] for r in measured), default=0)
         self.record("1.4.3", "AA", "Contrast (minimum)",
                     "Topic 13 Sensory & contrast", status, detail,
-                    "%d text run(s) measured, lowest %.2f:1, %d below 4.5:1, "
+                    "%d text run(s) measured, lowest %.2f:1, %d below the bar, "
                     "%d not measurable, %d exempt"
                     % (len(measured), worst, len(fails), len(unmeasurable),
                        len(exempt)))

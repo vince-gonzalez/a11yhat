@@ -9,9 +9,21 @@ is the Trusted Tester stance - every applicable criterion gets a recorded result
 """
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field
 
 PASS, FAIL, REVIEW, NA = "PASS", "FAIL", "REVIEW", "NA"
+# A check that fell over. NOT a pass and NOT a fail: the criterion was
+# not decided, and a report that quietly drops it reads as a pass.
+ERROR = "ERROR"
+
+
+def _sc_from_method(name):
+    """sc_143_contrast -> 1.4.3, for naming a crashed check."""
+    m = re.match(r"sc_(\d)(\d)(\d+)", name)
+    return "%s.%s.%s" % m.groups() if m else name
+
 
 PRINCIPLE = {"1": "Perceivable", "2": "Operable", "3": "Understandable", "4": "Robust"}
 
@@ -56,7 +68,29 @@ class Crew:
                                      list(detail or []), measurement))
 
     def run(self) -> list[Finding]:
-        for name in dir(self):
-            if name.startswith("sc_"):
+        """Every check runs, and one of them falling over does not take
+        the report with it.
+
+        Without this, a single malformed stylesheet or a surprise in the
+        markup raised out of one check and the whole audit produced
+        nothing at all - no report, no partial answer, a traceback. A
+        tool somebody runs before they ship has to degrade to "this one
+        check broke" rather than to silence.
+
+        A crashed check records an ERROR, never a pass. I would rather
+        the report say a criterion could not be decided than imply it
+        was decided and came back clean.
+        """
+        for name in sorted(dir(self)):
+            if not name.startswith("sc_"):
+                continue
+            try:
                 getattr(self, name)()
+            except Exception as e:                           # noqa: BLE001
+                self.findings.append(Finding(
+                    _sc_from_method(name), "A", name, "internal", ERROR,
+                    ["this check raised %s: %s. The criterion was NOT "
+                     "decided and is not a pass."
+                     % (type(e).__name__, str(e)[:120])],
+                    "check crashed"))
         return self.findings

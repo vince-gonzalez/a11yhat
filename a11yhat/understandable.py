@@ -11,7 +11,10 @@ import re
 from .base import FAIL, NA, PASS, REVIEW, Crew
 
 
-class Understandable(Crew):
+from .extra import MoreUnderstandable
+
+
+class Understandable(MoreUnderstandable, Crew):
     principle_num = "3"
 
     # ---- 3.1.1 Language of page (Topic 11) ----

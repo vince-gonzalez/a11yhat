@@ -168,6 +168,100 @@ def _bg_of(node, ruleset):
     return v, img
 
 
+# ---- how big is this text, really -------------------------------
+# 1.4.3 asks for 4.5:1, and 3:1 when the text is large. Large is 18pt,
+# or 14pt bold, which is 24px and 18.66px at the usual 96dpi. Without
+# this I hold every heading to the small-text bar and over-report.
+_ABS = {"xx-small": 9.0, "x-small": 10.0, "small": 13.0, "medium": 16.0,
+        "large": 18.0, "x-large": 24.0, "xx-large": 32.0}
+_LEN = re.compile(r"^([\d.]+)\s*(px|pt|rem|em|%|)$", re.I)
+_HEADING_PX = {"h1": 32.0, "h2": 24.0, "h3": 18.72, "h4": 16.0,
+               "h5": 13.28, "h6": 10.72}
+
+
+def _resolve_size(value, parent_px, root_px):
+    """One font-size declaration, against the size it inherits from."""
+    v = (value or "").strip().lower()
+    if v in _ABS:
+        return _ABS[v]
+    if v == "larger":
+        return parent_px * 1.2
+    if v == "smaller":
+        return parent_px / 1.2
+    m = _LEN.match(v)
+    if not m:
+        return None
+    n, unit = float(m.group(1)), (m.group(2) or "px").lower()
+    if unit == "px":
+        return n
+    if unit == "pt":
+        return n * 4.0 / 3.0          # 72pt to the inch, 96px to the inch
+    if unit == "rem":
+        return n * root_px
+    if unit == "em":
+        return n * parent_px
+    if unit == "%":
+        return parent_px * n / 100.0
+    return None
+
+
+def font_px(node, ruleset, root_px=16.0):
+    """The computed font size in CSS pixels.
+
+    Resolved from the root DOWN, because em and % are relative to the
+    parent and rem to the root. Doing it from the node up would get an
+    em chain wrong.
+    """
+    chain = []
+    cur = node
+    while cur is not None:
+        chain.append(cur)
+        cur = cur.parent
+    chain.reverse()
+    size = root_px
+    for n in chain:
+        if n.tag in _HEADING_PX:
+            size = _HEADING_PX[n.tag]
+        dec = declared(n, ruleset, "font-size")
+        if dec:
+            got = _resolve_size(dec, size, root_px)
+            if got:
+                size = got
+    return size
+
+
+def is_bold(node, ruleset) -> bool:
+    cur = node
+    while cur is not None:
+        if cur.tag in ("b", "strong") or cur.tag in _HEADING_PX:
+            return True
+        w = declared(cur, ruleset, "font-weight")
+        if w:
+            w = w.strip().lower()
+            if w in ("bold", "bolder"):
+                return True
+            if w.isdigit():
+                return int(w) >= 700
+            return False
+        cur = cur.parent
+    return False
+
+
+def root_font_px(doc, ruleset) -> float:
+    """html{font-size:...} if it is an absolute length. A percentage on
+    the root is relative to the browser default, which I take as 16."""
+    for n in doc.walk():
+        if n.tag == "html":
+            dec = declared(n, ruleset, "font-size")
+            got = _resolve_size(dec, 16.0, 16.0) if dec else None
+            return got or 16.0
+    return 16.0
+
+
+def required_ratio(px: float, bold: bool) -> float:
+    return 3.0 if (px >= 24.0 or (px >= 18.66 and bold)) else 4.5
+
+
 def _is_hidden(node, ruleset) -> bool:
     """display:none anywhere up the chain means nothing renders.
 
@@ -248,6 +342,7 @@ def text_pairs(doc, css: str, assume=(255, 255, 255)):
     teal behind my own window.
     """
     ruleset = rules(css)
+    root_px = root_font_px(doc, ruleset)
     out = []
     for node in doc.walk():
         if node.tag in ("script", "style", "head", "title", "meta", "link"):
@@ -293,9 +388,13 @@ def text_pairs(doc, css: str, assume=(255, 255, 255)):
             continue
         where = node.tag + (("." + (node.get("class") or "").split()[0])
                             if node.get("class") else "")
+        px = font_px(node, ruleset, root_px)
+        bold = is_bold(node, ruleset)
         row = dict(where=where, fg=fg_raw.strip(),
                    bg=(bg_raw or "").strip(), ratio=None,
-                   translucent=False, verdict="unmeasurable", why="")
+                   translucent=False, verdict="unmeasurable", why="",
+                   px=round(px, 2), bold=bold,
+                   needs=required_ratio(px, bold))
         if _is_inactive(node):
             row["verdict"] = "exempt"
             row["why"] = "inactive or aria-hidden component"
