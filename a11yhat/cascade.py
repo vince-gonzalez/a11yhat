@@ -168,6 +168,53 @@ def _bg_of(node, ruleset):
     return v, img
 
 
+def _is_hidden(node, ruleset) -> bool:
+    """display:none anywhere up the chain means nothing renders.
+
+    I was measuring a sign-in modal and an easter-egg panel that are
+    display:none at rest and reporting their contrast as failures. Text
+    nobody can see has no contrast to fail.
+
+    visibility:hidden and opacity:0 are deliberately NOT treated the
+    same. opacity:0 is how I write a scroll reveal, and that text does
+    appear a moment later, so it still has to pass.
+    """
+    cur = node
+    while cur is not None:
+        if "display:none" in (cur.get("style") or "").replace(" ", ""):
+            return True
+        if cur.has("hidden"):
+            return True
+        v = declared(cur, ruleset, "display")
+        if v and v.strip().lower() == "none":
+            return True
+        cur = cur.parent
+    return False
+
+
+def _is_colour_emoji(text: str) -> bool:
+    """Text made only of characters the font paints in its own colours.
+
+    A colour emoji ignores the CSS `color` property entirely, so
+    measuring the inherited text colour against the background says
+    nothing about whether anybody can see it. On poticas this reported
+    thirteen failures for things like a wheat glyph and a package glyph.
+
+    Deliberately narrow: the astral emoji planes, and anything carrying
+    the emoji variation selector U+FE0F. A typographic symbol like the
+    four-pointed star U+2726 DOES take a CSS colour, so it stays
+    measured, and a label that mixes a glyph with real words is still
+    real words and stays measured too.
+    """
+    s = text.strip()
+    if not s:
+        return False
+    if "️" in s:
+        s = s.replace("️", "").replace("‍", "")
+        return bool(s) and all(ord(c) >= 0x2600 or c.isspace() for c in s)
+    return all(ord(c) >= 0x1F000 or c.isspace() for c in s)
+
+
 def _is_inactive(node) -> bool:
     """WCAG 1.4.3 does not apply to an inactive component. I check the
     attributes that actually mean it and not somebody's class name."""
@@ -252,6 +299,17 @@ def text_pairs(doc, css: str, assume=(255, 255, 255)):
         if _is_inactive(node):
             row["verdict"] = "exempt"
             row["why"] = "inactive or aria-hidden component"
+            out.append(row)
+            continue
+        if _is_hidden(node, ruleset):
+            row["verdict"] = "exempt"
+            row["why"] = "display:none at rest, so nothing renders"
+            out.append(row)
+            continue
+        if _is_colour_emoji(node.text or ""):
+            row["verdict"] = "exempt"
+            row["why"] = ("a colour emoji, which the font paints and the "
+                          "CSS colour does not reach")
             out.append(row)
             continue
         if over_image:

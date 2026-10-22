@@ -123,6 +123,36 @@ class ThingsIRefuseToGuess(unittest.TestCase):
                if r["where"].startswith("div")]
         self.assertEqual(got, [], "a div holding no text of its own is not text")
 
+    def test_display_none_is_not_measured(self):
+        # a sign-in modal and an easter-egg panel are display:none at
+        # rest; text nobody can see has no contrast to fail
+        r = one("body{background:#fff;color:#eee}.modal{display:none}",
+                "<div class=modal><p>hidden</p></div>", "p")
+        self.assertEqual(r["verdict"], "exempt")
+
+    def test_opacity_zero_IS_still_measured(self):
+        # that is how I write a scroll reveal, and it does appear
+        r = one("body{background:#fff;color:#eee}.reveal{opacity:0}",
+                "<div class=reveal><p>shown later</p></div>", "p")
+        self.assertEqual(r["verdict"], "measured")
+
+    def test_a_colour_emoji_is_exempt(self):
+        r = one("body{background:#3b2314;color:#2a1a0e}",
+                "<span>🌰</span>", "span")
+        self.assertEqual(r["verdict"], "exempt")
+
+    def test_a_typographic_symbol_is_NOT_exempt(self):
+        # U+2726 takes a CSS colour, so it still has to pass
+        r = one("body{background:#ede5d4;color:#c9922a}",
+                "<span>✦</span>", "span")
+        self.assertEqual(r["verdict"], "measured")
+
+    def test_a_glyph_beside_real_words_is_still_real_words(self):
+        r = one("body{background:#3b2314;color:#2a1a0e}",
+                "<span>🌰 Pantry</span>", "span")
+        self.assertEqual(r["verdict"], "measured")
+
+
 
 class CustomPropertiesResolve(unittest.TestCase):
 
