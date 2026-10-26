@@ -110,5 +110,24 @@ class CanvasAcceptsAnAccessibleName(unittest.TestCase):
                          "FAIL")
 
 
+class HexAndNamedColoursAreParsed(unittest.TestCase):
+    """parse_rgba had no test for the named-colour branch or the #rgba
+    four-digit hex branch. The `tests` crew's mutation pass found both as
+    surviving mutants (an Add -> Sub on each tuple concatenation went
+    uncaught, because nothing exercised the path). These pin them."""
+
+    def test_named_colours(self):
+        self.assertEqual(parse_rgba("black"), (0, 0, 0, 1.0))
+        self.assertEqual(parse_rgba("white"), (255, 255, 255, 1.0))
+        self.assertEqual(parse_rgba("red"), (255, 0, 0, 1.0))
+        self.assertEqual(parse_rgba("WHITE"), (255, 255, 255, 1.0))  # case-folded
+
+    def test_four_digit_rgba_hex(self):
+        self.assertEqual(parse_rgba("#0f0f"), (0, 255, 0, 1.0))
+        r, g, b, a = parse_rgba("#f008")
+        self.assertEqual((r, g, b), (255, 0, 0))
+        self.assertAlmostEqual(a, 136 / 255.0, places=6)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
